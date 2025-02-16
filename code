@@ -1,0 +1,164 @@
+from random import choice
+import undetected_chromedriver as uc
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+
+# Ganti Ke Akun XCASH lu
+username = 'abcashfahfa'
+password = 'asfasfaf'
+
+
+login_url = 'https://xcashshop.com/auth/login'
+account_url = 'https://xcashshop.com/account'
+weekly_diamond_pass_url = 'https://xcashshop.com/weekly-diamond-pass'
+
+
+desired_price = 1000  
+
+
+user_agents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15",
+]
+user_agent = choice(user_agents)
+
+
+def init_driver():
+    options = uc.ChromeOptions()
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--start-maximized")
+    options.add_argument(f"user-agent={user_agent}")
+
+    try:
+        driver = uc.Chrome(options=options)
+        print(f"Using user agent: {user_agent}")
+        return driver
+    except Exception as e:
+        print(f"Error initializing driver with user agent {user_agent}: {e}")
+        raise
+
+
+def login(driver):
+    try:
+        driver.get(login_url)
+
+        
+        username_field = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.XPATH, '//*[@id="__next"]/main/div[3]/div/div/form/div[1]/input'))
+        )
+        username_field.send_keys(username)
+
+        
+        password_field = driver.find_element(By.XPATH, '//*[@id="__next"]/main/div[3]/div/div/form/div[2]/input')
+        password_field.send_keys(password)
+
+        
+        login_button = driver.find_element(By.XPATH, '//*[@id="__next"]/main/div[3]/div/div/form/button')
+        login_button.click()
+
+        
+        WebDriverWait(driver, 10).until(
+            EC.url_to_be(account_url)
+        )
+
+        
+        driver.get(weekly_diamond_pass_url)
+
+        print("Logged in successfully and navigated to the weekly diamond pass page!")
+    except Exception as e:
+        print(f"Error during login: {e}")
+
+
+def check_item_price(driver):
+    try:
+        
+        price_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '//*[@id="selection-denom"]/div[2]/article[1]/div[1]/div[1]/div[2]/h5'))
+        )
+
+        
+        price_text = price_element.text.replace('Rp', '').replace('.', '').replace(',', '').replace('-', '').strip()
+        current_price = int(price_text)
+        print(f"Current price: Rp {current_price}")
+
+        return current_price <= desired_price
+    except Exception as e:
+        print(f"Error checking item price: {e}")
+        return False
+
+
+def purchase(driver):
+    try:
+        
+        item = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '//*[@id="selection-denom"]/div[2]/article[1]/div[1]/div[1]'))
+        )
+        item.click()
+
+      
+        payment_method = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '//*[@id="selection-payment"]/div[2]/div[1]/div[1]/p'))
+        )
+        payment_method.click()
+
+      
+        payment_confirmation = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '//*[@id="selection-payment"]/div[2]/div[1]/div[2]/div/div/div/div[2]/p'))
+        )
+        payment_confirmation.click()
+
+        
+        checkout_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '//*[@id="__next"]/div[1]/div[2]/main/div[2]/div/div/div[2]/section[4]/button'))
+        )
+        checkout_button.click()
+
+       
+        confirm_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '/html/body/div[2]/div/div/div/div[2]/div/div/div[2]/button[1]'))
+        )
+        confirm_button.click()
+
+        print("Purchase completed!")
+
+        return True
+    except Exception as e:
+        print(f"Error during purchase: {e}")
+        driver.save_screenshot('error_screenshot.png')
+        return False
+    
+
+while True:
+    try:
+        driver = init_driver()
+        login(driver)  
+
+        while True:
+            if check_item_price(driver):
+                while check_item_price(driver):
+                    if purchase(driver):
+                       
+                        WebDriverWait(driver, 10).until(
+                            EC.url_to_be(account_url)
+                        )
+                        break  
+                    time.sleep(0.3)  
+                break  
+            else:
+                driver.refresh()  
+
+            time.sleep(3)  
+
+        
+        time.sleep(0.3)
+
+    except Exception as e:
+        print(f"Encountered an error: {e}. Restarting the script...")
+        driver.quit()
+        time.sleep(0.3)  
+    finally:
+        driver.quit()
