@@ -1,0 +1,7 @@
+tools
+chromedriver - https://getwebdriver.com/
+python - https://www.python.org/downloads/
+
+setup
+pip install undetected-chromedriver selenium
+python -m pip install setuptools
